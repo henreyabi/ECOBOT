@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoBot | Live Environmental Telemetry & Rover Tracking</title>
+    <meta name="description" content="Live environmental monitoring rover dashboard with real-time ESP32 MQ-135 CO2 sensor telemetry, geolocation mapping, and Firebase synchronization.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- TOP NAVIGATION & STATUS BAR -->
+        <header class="app-header">
+            <div class="brand-block">
+                <div class="brand-logo-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a9 9 0 0 1 9 9c0 4.97-4.03 9-9 9a9 9 0 0 1-9-9 9 9 0 0 1 9-9z"></path>
+                        <path d="M12 6v6l4 2"></path>
+                        <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1 class="brand-title">EcoBot <span class="badge-tag">IoT TELEMETRY</span></h1>
+                    <p class="brand-subtitle">Environmental Rover & Air Quality Monitor</p>
+                </div>
+            </div>
+
+            <div class="header-status-group">
+                <div class="status-chip">
+                    <span class="status-chip-label">DEVICE</span>
+                    <span id="device" class="status-chip-value">EcoBot Rover</span>
+                </div>
+                <div class="status-chip">
+                    <span class="status-chip-label">LAST SYNC</span>
+                    <span id="lastUpdate" class="status-chip-value">Waiting...</span>
+                </div>
+                <div id="connection" class="connection offline">
+                    ● Connecting...
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN DASHBOARD CONTENT -->
+        <main class="dashboard-grid">
+            <!-- LEFT COLUMN: TELEMETRY METRICS -->
+            <section class="telemetry-panel">
+                <!-- PRIMARY CARD: CO2 CONCENTRATION -->
+                <div class="metric-card co2-card">
+                    <div class="card-header">
+                        <div class="card-title-wrap">
+                            <span class="card-icon co2-icon">💨</span>
+                            <h3>Carbon Dioxide (CO₂)</h3>
+                        </div>
+                        <span id="co2Status" class="co2-status-pill">INITIALIZING</span>
+                    </div>
+
+                    <div class="co2-display-row">
+                        <div class="co2-number-wrap">
+                            <span id="co2" class="metric-giant-number">--</span>
+                            <span class="metric-unit">PPM</span>
+                        </div>
+                        <div class="co2-gauge-meta">
+                            <span class="gauge-target">Target: &lt; 800</span>
+                            <span class="gauge-sensor">Sensor: MQ-135</span>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic CO2 Progress Bar -->
+                    <div class="progress-track">
+                        <div id="co2Bar" class="progress-fill" style="width: 0%; background: #2ca45b;"></div>
+                    </div>
+                    <div class="gauge-scale">
+                        <span>0</span>
+                        <span>400 (Clean Air)</span>
+                        <span>1000 (Moderate)</span>
+                        <span>2000+</span>
+                    </div>
+                </div>
+
+                <!-- SECONDARY CARD: CLIMATE SENSORS -->
+                <div class="metrics-dual-row">
+                    <div class="metric-card climate-card">
+                        <div class="card-header-compact">
+                            <span class="card-icon temp-icon">🌡️</span>
+                            <h4>Temperature</h4>
+                        </div>
+                        <div class="compact-value-row">
+                            <span id="temperature" class="metric-medium-number">--</span>
+                            <span class="metric-unit-compact">°C</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card climate-card">
+                        <div class="card-header-compact">
+                            <span class="card-icon hum-icon">💧</span>
+                            <h4>Humidity</h4>
+                        </div>
+                        <div class="compact-value-row">
+                            <span id="humidity" class="metric-medium-number">--</span>
+                            <span class="metric-unit-compact">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TERTIARY CARD: GEOLOCATION & ROVER POSITION -->
+                <div class="metric-card gps-card">
+                    <div class="card-header">
+                        <div class="card-title-wrap">
+                            <span class="card-icon gps-icon">🛰️</span>
+                            <h3>Rover Geolocation</h3>
+                        </div>
+                        <span id="gpsStatus" class="gps-status-pill">● Requesting GPS...</span>
+                    </div>
+
+                    <div class="gps-coords-grid">
+                        <div class="coord-box">
+                            <span class="coord-label">LATITUDE</span>
+                            <span id="latitude" class="coord-value">--</span>
+                        </div>
+                        <div class="coord-box">
+                            <span class="coord-label">LONGITUDE</span>
+                            <span id="longitude" class="coord-value">--</span>
+                        </div>
+                        <div class="coord-box full-width">
+                            <span class="coord-label">ACCURACY</span>
+                            <div class="accuracy-flex">
+                                <span id="accuracy" class="coord-value">--</span>
+                                <span class="accuracy-unit">meters</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gps-action-row">
+                        <button id="btnRecenter" class="btn-secondary" title="Center map on rover">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+                            </svg>
+                            Center Rover
+                        </button>
+                        <button id="btnToggleGps" class="btn-secondary" title="Toggle phone GPS tracking">
+                            Refresh GPS
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SIMULATOR & TESTING CONTROLS -->
+                <div class="metric-card simulator-card">
+                    <div class="card-header-compact">
+                        <span class="card-icon sim-icon">⚡</span>
+                        <h4>Hardware Simulator & Debug</h4>
+                    </div>
+                    <p class="sim-description">Test live Firebase sync & UI animations without physical ESP32 powered on.</p>
+                    <div class="sim-actions">
+                        <button id="btnSimulate" class="btn-primary" onclick="simulateData()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Generate Test Reading
+                        </button>
+                        <button id="btnAutoSim" class="btn-outline" onclick="toggleAutoSim()">
+                            Auto Stream (5s)
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT COLUMN: LEAFLET MAP & GEO-MAPPING -->
+            <section class="map-panel">
+                <div class="map-wrapper">
+                    <div id="map" class="map-canvas"></div>
+
+                    <!-- Map Overlay Controls -->
+                    <div class="map-floating-legend">
+                        <div class="legend-title">CO₂ Air Quality Legend</div>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <span class="legend-dot dot-normal"></span>
+                                <span>&lt; 800 PPM (Optimal)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot dot-moderate"></span>
+                                <span>800 - 1200 PPM (Moderate)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot dot-high"></span>
+                                <span>&gt; 1200 PPM (Hazardous)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <span>EcoBot IoT Environmental Platform • Connected to Firebase RTDB & Node.js Bridge</span>
+            <span class="footer-hint">Tip: Open this URL on your rover smartphone with GPS enabled to trace live environmental trails.</span>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Simulation & Helper script for browser UI buttons -->
+    <script>
+        let autoSimInterval = null;
+        async function simulateData() {
+            try {
+                const res = await fetch('/api/simulate', { method: 'POST' });
+                const json = await res.json();
+                console.log("Simulated successfully:", json);
+            } catch (e) {
+                console.warn("Backend simulate endpoint not reachable, simulating locally...");
+                if (window.pushLocalSimulation) window.pushLocalSimulation();
+            }
+        }
+
+        function toggleAutoSim() {
+            const btn = document.getElementById('btnAutoSim');
+            if (autoSimInterval) {
+                clearInterval(autoSimInterval);
+                autoSimInterval = null;
+                btn.textContent = "Auto Stream (5s)";
+                btn.classList.remove("active");
+            } else {
+                simulateData();
+                autoSimInterval = setInterval(simulateData, 5000);
+                btn.textContent = "Stop Auto Stream";
+                btn.classList.add("active");
+            }
+        }
+    </script>
+
+    <!-- Main Module Script -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
