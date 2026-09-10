@@ -1,0 +1,41 @@
+// ESP32 Pins
+const int MQ135_ANALOG_PIN = 34; // GPIO34 (Input-only, ADC1)
+const int MQ135_DIGITAL_PIN = 27; // GPIO27 (Digital threshold check)
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000); // Allow serial monitor to start
+
+  // Configure digital pin as input
+  pinMode(MQ135_DIGITAL_PIN, INPUT);
+
+  // Set ADC attenuation to 11dB (allows reading up to ~3.3V)
+  analogSetAttenuation(ADC_11db);
+
+  Serial.println("====================================");
+  Serial.println("   MQ-135 ESP32 Diagnostic Test     ");
+  Serial.println("====================================");
+  Serial.println("Reading sensor data every 1 second...");
+}
+
+void loop() {
+  // Read raw ADC value (0 - 4095)
+  int rawADC = analogRead(MQ135_ANALOG_PIN);
+
+  // Convert raw ADC value to estimated voltage (mV)
+  uint32_t milliVolts = analogReadMilliVolts(MQ135_ANALOG_PIN);
+  float voltage = milliVolts / 1000.0;
+
+  // Read digital pin state (0 or 1)
+  int digitalState = digitalRead(MQ135_DIGITAL_PIN);
+
+  // Print results to Serial Monitor
+  Serial.print("Raw ADC (GPIO34): ");
+  Serial.print(rawADC);
+  Serial.print(" \t Voltage: ");
+  Serial.print(voltage, 3);
+  Serial.print(" V \t Digital (GPIO27): ");
+  Serial.println(digitalState);
+
+  delay(1000);
+}
