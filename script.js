@@ -483,7 +483,7 @@ function handleSensorData(data) {
     }
 
 
-    latestCO2 = Math.floor(425 + Math.random() * 21);
+latestCO2 = Math.floor(425 + Math.random() * 21);
 
 
     if (co2) {
