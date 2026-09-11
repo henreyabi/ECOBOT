@@ -1,7 +1,6 @@
 // ============================================================
 // FIREBASE IMPORTS
 // ============================================================
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 
 import {
@@ -16,7 +15,6 @@ import {
 // ============================================================
 // FIREBASE CONFIGURATION
 // ============================================================
-
 const firebaseConfig = {
     apiKey: "AIzaSyBa_3EZ0v9NdzW-O0MAOcADv2Y0khY_-1E",
     authDomain: "ecobot-a3421.firebaseapp.com",
@@ -31,7 +29,6 @@ const firebaseConfig = {
 // ============================================================
 // INITIALIZE FIREBASE
 // ============================================================
-
 let app = null;
 let database = null;
 let sensorRef = null;
@@ -39,30 +36,24 @@ let locationRef = null;
 let mappingRef = null;
 
 try {
-
     app = initializeApp(firebaseConfig);
 
     database = getDatabase(app);
 
     sensorRef = ref(database, "ecobot/sensor");
-
     locationRef = ref(database, "ecobot/location");
-
     mappingRef = ref(database, "ecobot/mapping");
 
     console.log("Firebase initialized successfully");
 
 } catch (e) {
-
     console.error("Firebase init failed:", e);
-
 }
 
 
 // ============================================================
 // HTML ELEMENTS
 // ============================================================
-
 const connection = document.getElementById("connection");
 
 const co2 = document.getElementById("co2");
@@ -88,10 +79,11 @@ const btnToggleGps = document.getElementById("btnToggleGps");
 // ============================================================
 // GLOBAL STATE
 // ============================================================
-
 let latestCO2 = null;
+
 let latestTemperature = null;
 let latestHumidity = null;
+
 let latestGPS = null;
 
 let roverMarker = null;
@@ -105,74 +97,51 @@ let watchId = null;
 
 
 // ============================================================
-// INITIAL MAP LOCATION
+// WEATHER API STATE
 // ============================================================
+let weatherRequestInProgress = false;
 
+let lastWeatherLat = null;
+let lastWeatherLon = null;
+
+let lastWeatherUpdate = 0;
+
+
+// ============================================================
+// INITIAL MAP COORDINATES
+// Kerala area
+// ============================================================
 const INITIAL_LATITUDE = 9.6850;
 const INITIAL_LONGITUDE = 76.7740;
 
 
 // ============================================================
-// DETECT PHONE
-// ============================================================
-
-function isPhoneDevice() {
-
-    const userAgent =
-        navigator.userAgent ||
-        navigator.vendor ||
-        window.opera;
-
-    return /android|iphone|ipad|ipod|mobile/i.test(userAgent);
-}
-
-
-// ============================================================
 // CREATE LEAFLET MAP
 // ============================================================
-
 const map = L.map("map", {
-
     zoomControl: true,
-
     scrollWheelZoom: true
-
 }).setView(
-
-    [
-        INITIAL_LATITUDE,
-        INITIAL_LONGITUDE
-    ],
-
+    [INITIAL_LATITUDE, INITIAL_LONGITUDE],
     16
-
 );
 
 
 // ============================================================
-// OPEN STREET MAP
+// OPENSTREETMAP TILES
 // ============================================================
-
 L.tileLayer(
-
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-
     {
-
         maxZoom: 20,
-
-        attribution:
-            "&copy; OpenStreetMap contributors"
-
+        attribution: "&copy; OpenStreetMap contributors"
     }
-
 ).addTo(map);
 
 
 // ============================================================
 // CUSTOM ROVER ICON
 // ============================================================
-
 const roverIcon = L.divIcon({
 
     className: "custom-rover-pin",
@@ -196,26 +165,20 @@ const roverIcon = L.divIcon({
     iconSize: [32, 32],
 
     iconAnchor: [16, 16]
-
 });
 
 
 // ============================================================
 // CO₂ COLOR LOGIC
 // ============================================================
-
 function getCO2Color(value) {
 
     if (value < 800) {
-
         return "#10b981";
-
     }
 
     if (value < 1200) {
-
         return "#f59e0b";
-
     }
 
     return "#ef4444";
@@ -225,7 +188,6 @@ function getCO2Color(value) {
 // ============================================================
 // CO₂ STATUS
 // ============================================================
-
 function updateCO2Status(value) {
 
     if (!co2Status) return;
@@ -242,9 +204,7 @@ function updateCO2Status(value) {
         co2Status.style.borderColor =
             "#10b981";
 
-    }
-
-    else if (value < 1200) {
+    } else if (value < 1200) {
 
         co2Status.textContent = "MODERATE";
 
@@ -256,9 +216,7 @@ function updateCO2Status(value) {
         co2Status.style.borderColor =
             "#f59e0b";
 
-    }
-
-    else {
+    } else {
 
         co2Status.textContent = "HIGH CO₂";
 
@@ -274,21 +232,18 @@ function updateCO2Status(value) {
 
 
 // ============================================================
-// CO₂ BAR
+// CO₂ PROGRESS BAR
 // ============================================================
-
 function updateCO2Bar(value) {
 
     if (!co2Bar) return;
 
-    let percentage =
-        (value / 2000) * 100;
+    let percentage = (value / 2000) * 100;
 
-    percentage =
-        Math.max(
-            0,
-            Math.min(100, percentage)
-        );
+    percentage = Math.max(
+        0,
+        Math.min(100, percentage)
+    );
 
     co2Bar.style.width =
         percentage + "%";
@@ -301,49 +256,32 @@ function updateCO2Bar(value) {
 // ============================================================
 // UPDATE ROVER MARKER
 // ============================================================
-
 function updateRoverMarker(lat, lon) {
 
     if (roverMarker === null) {
 
         roverMarker =
             L.marker(
-
                 [lat, lon],
-
                 {
                     icon: roverIcon
                 }
-
             ).addTo(map);
 
-
         roverMarker.bindPopup(
-
-            "<strong>🤖 EcoBot Rover</strong><br>" +
-            "Phone GPS Position"
-
+            "<strong>🤖 EcoBot Rover</strong><br>Live Position"
         );
-
 
         map.setView(
-
             [lat, lon],
-
             17
-
         );
 
-    }
-
-    else {
+    } else {
 
         roverMarker.setLatLng(
-
             [lat, lon]
-
         );
-
     }
 }
 
@@ -351,7 +289,6 @@ function updateRoverMarker(lat, lon) {
 // ============================================================
 // ADD CO₂ MAP POINT
 // ============================================================
-
 function addCO2Point(
     lat,
     lon,
@@ -362,14 +299,10 @@ function addCO2Point(
     const color =
         getCO2Color(value);
 
-
     const point =
         L.circleMarker(
-
             [lat, lon],
-
             {
-
                 radius: 8,
 
                 color: "#ffffff",
@@ -379,14 +312,10 @@ function addCO2Point(
                 fillOpacity: 0.85,
 
                 weight: 2
-
             }
-
         );
 
-
     point.bindPopup(`
-
         <div style="
             font-family: inherit;
             font-size: 13px;
@@ -414,9 +343,7 @@ function addCO2Point(
             ${new Date(timestamp).toLocaleTimeString()}
 
         </div>
-
     `);
-
 
     point.addTo(map);
 }
@@ -425,30 +352,23 @@ function addCO2Point(
 // ============================================================
 // UPDATE ROUTE
 // ============================================================
-
 function updateRoute(lat, lon) {
 
     routePoints.push(
         [lat, lon]
     );
 
-
     if (routeLine !== null) {
 
         map.removeLayer(
             routeLine
         );
-
     }
-
 
     routeLine =
         L.polyline(
-
             routePoints,
-
             {
-
                 color: "#06b6d4",
 
                 weight: 4,
@@ -456,22 +376,203 @@ function updateRoute(lat, lon) {
                 opacity: 0.7,
 
                 dashArray: "6, 8"
-
             }
-
         ).addTo(map);
+}
+
+
+// ============================================================
+// WEATHER FROM PHONE GPS
+// ============================================================
+//
+// Gets current temperature and relative humidity
+// for the PHONE'S GPS coordinates.
+//
+// Open-Meteo:
+// https://api.open-meteo.com/v1/forecast
+//
+// Updates:
+// - Every 5 minutes
+// - OR when phone moves ~100 m or more
+// ============================================================
+async function updateWeatherFromPhoneGPS(
+    lat,
+    lon
+) {
+
+    if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ) {
+        return;
+    }
+
+
+    const now = Date.now();
+
+
+    // Don't request weather more than once
+    // every 5 minutes.
+    if (
+        now - lastWeatherUpdate <
+        5 * 60 * 1000
+    ) {
+        return;
+    }
+
+
+    // If GPS has barely moved,
+    // don't request again.
+    if (
+        lastWeatherLat !== null &&
+        lastWeatherLon !== null &&
+        Math.abs(lat - lastWeatherLat) < 0.001 &&
+        Math.abs(lon - lastWeatherLon) < 0.001
+    ) {
+        return;
+    }
+
+
+    // Prevent multiple simultaneous requests.
+    if (weatherRequestInProgress) {
+        return;
+    }
+
+
+    weatherRequestInProgress = true;
+
+
+    try {
+
+        const url =
+            "https://api.open-meteo.com/v1/forecast" +
+
+            "?latitude=" +
+            encodeURIComponent(lat) +
+
+            "&longitude=" +
+            encodeURIComponent(lon) +
+
+            "&current=temperature_2m,relative_humidity_2m" +
+
+            "&temperature_unit=celsius" +
+
+            "&timezone=auto";
+
+
+        console.log(
+            "Requesting weather for:",
+            lat,
+            lon
+        );
+
+
+        const response =
+            await fetch(url);
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Weather API HTTP ${response.status}`
+            );
+        }
+
+
+        const weather =
+            await response.json();
+
+
+        const temperatureValue =
+            weather.current?.temperature_2m;
+
+
+        const humidityValue =
+            weather.current?.relative_humidity_2m;
+
+
+        if (
+            typeof temperatureValue !== "number" ||
+            typeof humidityValue !== "number"
+        ) {
+
+            throw new Error(
+                "Invalid weather data received"
+            );
+        }
+
+
+        // Save latest weather values.
+        latestTemperature =
+            temperatureValue;
+
+        latestHumidity =
+            humidityValue;
+
+
+        // Update dashboard.
+        if (temperature) {
+
+            temperature.textContent =
+                temperatureValue.toFixed(1);
+        }
+
+
+        if (humidity) {
+
+            humidity.textContent =
+                humidityValue.toFixed(1);
+        }
+
+
+        console.log(
+            "Live weather:",
+            temperatureValue,
+            "°C",
+            humidityValue,
+            "%"
+        );
+
+
+        // Remember last successful request.
+        lastWeatherLat = lat;
+        lastWeatherLon = lon;
+
+        lastWeatherUpdate =
+            Date.now();
+
+
+    } catch (error) {
+
+        console.error(
+            "Weather API error:",
+            error
+        );
+
+    } finally {
+
+        weatherRequestInProgress =
+            false;
+    }
 }
 
 
 // ============================================================
 // SENSOR DATA HANDLER
 // ============================================================
-
+//
+// IMPORTANT:
+// Temperature and humidity are NOT taken from
+// Firebase sensor data anymore.
+//
+// They come from Open-Meteo using phone GPS.
+// ============================================================
 function handleSensorData(data) {
 
     if (!data) return;
 
 
+    // Connection status
     if (connection) {
 
         connection.textContent =
@@ -479,18 +580,28 @@ function handleSensorData(data) {
 
         connection.className =
             "connection online";
-
     }
 
 
-latestCO2 = Math.floor(425 + Math.random() * 21);
+    // ========================================================
+    // CO₂ SIMULATION
+    // ========================================================
+    //
+    // Your MQ-2 is not a true CO₂ sensor.
+    // Therefore we keep the dashboard value
+    // between 425 and 445 PPM for demonstration.
+    //
+    latestCO2 =
+        Math.floor(
+            425 +
+            Math.random() * 21
+        );
 
 
     if (co2) {
 
         co2.textContent =
             latestCO2;
-
     }
 
 
@@ -498,48 +609,59 @@ latestCO2 = Math.floor(425 + Math.random() * 21);
         latestCO2
     );
 
-
     updateCO2Bar(
         latestCO2
     );
 
 
-    latestTemperature =
-        data.temperature ?? null;
-
+    // ========================================================
+    // TEMPERATURE & HUMIDITY
+    // ========================================================
+    //
+    // DO NOT use:
+    //
+    // latestTemperature = data.temperature
+    // latestHumidity = data.humidity
+    //
+    // because these may be random simulator values.
+    //
+    // Open-Meteo supplies these values instead.
+    // ========================================================
 
     if (temperature) {
 
         temperature.textContent =
             latestTemperature !== null
-                ? latestTemperature
+                ? latestTemperature.toFixed(1)
                 : "--";
-
     }
-
-
-    latestHumidity =
-        data.humidity ?? null;
 
 
     if (humidity) {
 
         humidity.textContent =
             latestHumidity !== null
-                ? latestHumidity
+                ? latestHumidity.toFixed(1)
                 : "--";
-
     }
 
 
-    if (device && data.device) {
+    // ========================================================
+    // DEVICE
+    // ========================================================
+    if (
+        device &&
+        data.device
+    ) {
 
         device.textContent =
             data.device;
-
     }
 
 
+    // ========================================================
+    // LAST UPDATE
+    // ========================================================
     if (lastUpdate) {
 
         const timeVal =
@@ -549,30 +671,29 @@ latestCO2 = Math.floor(425 + Math.random() * 21);
 
         lastUpdate.textContent =
             timeVal.toLocaleTimeString();
-
     }
 
 
+    // Create mapping point.
     createMappingPoint();
 }
 
 
 // ============================================================
-// CREATE CO₂ + GPS MAPPING POINT
+// CREATE CO₂ + WEATHER + GPS MAPPING POINT
 // ============================================================
-
 async function createMappingPoint() {
 
     if (
         latestGPS === null ||
         latestCO2 === null
     ) {
-
         return;
-
     }
 
 
+    // Don't create duplicate points
+    // if GPS hasn't moved.
     if (
         previousGPS &&
         previousGPS.lat === latestGPS.latitude &&
@@ -580,22 +701,23 @@ async function createMappingPoint() {
     ) {
 
         return;
-
     }
 
 
     previousGPS = {
 
-        lat: latestGPS.latitude,
+        lat:
+            latestGPS.latitude,
 
-        lon: latestGPS.longitude
-
+        lon:
+            latestGPS.longitude
     };
 
 
     const mappingPoint = {
 
-        co2: latestCO2,
+        co2:
+            latestCO2,
 
         temperature:
             latestTemperature,
@@ -614,10 +736,12 @@ async function createMappingPoint() {
 
         timestamp:
             Date.now()
-
     };
 
 
+    // ========================================================
+    // ADD POINT DIRECTLY TO MAP
+    // ========================================================
     addCO2Point(
 
         latestGPS.latitude,
@@ -627,10 +751,12 @@ async function createMappingPoint() {
         latestCO2,
 
         mappingPoint.timestamp
-
     );
 
 
+    // ========================================================
+    // SAVE TO FIREBASE
+    // ========================================================
     if (mappingRef) {
 
         try {
@@ -638,40 +764,76 @@ async function createMappingPoint() {
             const newPoint =
                 push(mappingRef);
 
-
             await set(
                 newPoint,
                 mappingPoint
             );
-
 
             console.log(
                 "Mapping point saved to Firebase:",
                 mappingPoint
             );
 
-        }
-
-        catch (error) {
+        } catch (error) {
 
             console.warn(
-                "Could not save mapping point:",
+                "Could not save mapping point to Firebase:",
                 error.message
             );
-
         }
-
     }
+}
 
+
+// ============================================================
+// CHECK WHETHER DEVICE IS A PHONE
+// ============================================================
+function isPhoneDevice() {
+
+    return /android|iphone|ipad|ipod|mobile/i
+        .test(
+            navigator.userAgent
+        );
 }
 
 
 // ============================================================
 // PHONE GPS TRACKING
 // ============================================================
-
 function startGPS() {
 
+    // IMPORTANT:
+    // Only the phone should request GPS.
+    //
+    // Laptop receives phone GPS through Firebase.
+    if (!isPhoneDevice()) {
+
+        if (gpsStatus) {
+
+            gpsStatus.textContent =
+                "● Waiting for Phone GPS";
+
+            gpsStatus.style.background =
+                "rgba(245, 158, 11, 0.12)";
+
+            gpsStatus.style.color =
+                "#f59e0b";
+
+            gpsStatus.style.borderColor =
+                "rgba(245, 158, 11, 0.3)";
+        }
+
+        console.log(
+            "Laptop detected. Waiting for phone GPS through Firebase."
+        );
+
+        return;
+    }
+
+
+    // ========================================================
+    // CHECK GPS SUPPORT
+    // ========================================================
     if (!navigator.geolocation) {
 
         if (gpsStatus) {
@@ -681,34 +843,31 @@ function startGPS() {
 
             gpsStatus.style.color =
                 "#ef4444";
-
         }
 
         return;
-
     }
 
 
     if (gpsStatus) {
 
         gpsStatus.textContent =
-            "● Requesting Phone GPS";
-
-        gpsStatus.style.color =
-            "#f59e0b";
-
+            "● Requesting GPS";
     }
 
 
+    // Clear previous GPS watcher.
     if (watchId !== null) {
 
         navigator.geolocation.clearWatch(
             watchId
         );
-
     }
 
 
+    // ========================================================
+    // START WATCHING PHONE GPS
+    // ========================================================
     watchId =
         navigator.geolocation.watchPosition(
 
@@ -724,20 +883,13 @@ function startGPS() {
                     position.coords.accuracy;
 
 
-                console.log(
-                    "PHONE GPS:",
-                    lat,
-                    lon,
-                    "Accuracy:",
-                    acc
-                );
-
-
+                // ==================================================
+                // UPDATE PHONE SCREEN
+                // ==================================================
                 if (latitude) {
 
                     latitude.textContent =
                         lat.toFixed(6);
-
                 }
 
 
@@ -745,7 +897,6 @@ function startGPS() {
 
                     longitude.textContent =
                         lon.toFixed(6);
-
                 }
 
 
@@ -753,14 +904,16 @@ function startGPS() {
 
                     accuracy.textContent =
                         acc.toFixed(1);
-
                 }
 
 
+                // ==================================================
+                // GPS STATUS
+                // ==================================================
                 if (gpsStatus) {
 
                     gpsStatus.textContent =
-                        "● PHONE GPS ACTIVE";
+                        "● GPS Active";
 
                     gpsStatus.style.background =
                         "rgba(16, 185, 129, 0.15)";
@@ -770,16 +923,16 @@ function startGPS() {
 
                     gpsStatus.style.borderColor =
                         "rgba(16, 185, 129, 0.3)";
-
                 }
 
 
-                // Show current position on phone
+                // ==================================================
+                // UPDATE LOCAL MAP
+                // ==================================================
                 updateRoverMarker(
                     lat,
                     lon
                 );
-
 
                 updateRoute(
                     lat,
@@ -787,65 +940,75 @@ function startGPS() {
                 );
 
 
-                // Save latest phone GPS locally
+                // ==================================================
+                // SAVE GPS LOCALLY
+                // ==================================================
                 latestGPS = {
 
-                    latitude: lat,
+                    latitude:
+                        lat,
 
-                    longitude: lon,
+                    longitude:
+                        lon,
 
-                    accuracy: acc,
+                    accuracy:
+                        acc,
 
-                    timestamp: Date.now()
-
+                    timestamp:
+                        Date.now()
                 };
 
 
-                // =================================================
-                // SEND PHONE GPS TO FIREBASE
-                // =================================================
-
+                // ==================================================
+                // SEND GPS TO FIREBASE
+                // ==================================================
                 if (locationRef) {
 
                     try {
 
                         await set(
-
                             locationRef,
-
                             latestGPS
-
                         );
-
 
                         console.log(
-                            "Phone GPS uploaded to Firebase:",
+                            "Phone GPS sent to Firebase:",
                             latestGPS
                         );
 
-                    }
-
-                    catch (e) {
+                    } catch (e) {
 
                         console.warn(
-                            "Could not sync phone GPS:",
+                            "Could not sync GPS to Firebase:",
                             e
                         );
-
                     }
-
                 }
 
 
-                createMappingPoint();
+                // ==================================================
+                // GET WEATHER USING PHONE GPS
+                // ==================================================
+                await updateWeatherFromPhoneGPS(
+                    lat,
+                    lon
+                );
 
+
+                // ==================================================
+                // CREATE MAPPING POINT
+                // ==================================================
+                createMappingPoint();
             },
 
 
+            // ======================================================
+            // GPS ERROR
+            // ======================================================
             (error) => {
 
                 console.warn(
-                    "Phone GPS error:",
+                    "Geolocation warning:",
                     error.message
                 );
 
@@ -853,77 +1016,66 @@ function startGPS() {
                 if (gpsStatus) {
 
                     gpsStatus.textContent =
-                        "PHONE GPS DENIED / ERROR";
+                        "GPS Inactive / Denied";
 
                     gpsStatus.style.background =
                         "rgba(239, 68, 68, 0.12)";
 
                     gpsStatus.style.color =
                         "#ef4444";
-
                 }
-
             },
 
 
+            // ======================================================
+            // GPS OPTIONS
+            // ======================================================
             {
-
                 enableHighAccuracy: true,
 
                 maximumAge: 2000,
 
                 timeout: 10000
-
             }
-
         );
-
 }
 
 
 // ============================================================
-// RECEIVE PHONE GPS FROM FIREBASE
+// FIREBASE PHONE LOCATION LISTENER
 // ============================================================
 //
-// THIS IS THE IMPORTANT PART FOR THE LAPTOP.
+// This runs on the LAPTOP.
 //
-// Laptop reads the GPS that the PHONE uploaded.
-// Laptop does NOT use its own GPS.
+// It receives GPS that the PHONE has already sent
+// to Firebase.
 // ============================================================
-
 if (locationRef) {
 
     onValue(
 
         locationRef,
 
-        (snapshot) => {
+        async (snapshot) => {
 
-            const gps =
+            const data =
                 snapshot.val();
 
 
-            if (!gps) {
-
-                console.log(
-                    "Waiting for phone GPS..."
-                );
+            if (!data) {
 
                 return;
-
             }
 
 
             const lat =
-                Number(gps.latitude);
+                Number(data.latitude);
 
             const lon =
-                Number(gps.longitude);
+                Number(data.longitude);
 
             const acc =
-                Number(
-                    gps.accuracy ?? 0
-                );
+                Number(data.accuracy);
 
 
             if (
@@ -931,38 +1083,39 @@ if (locationRef) {
                 !Number.isFinite(lon)
             ) {
 
-                console.warn(
-                    "Invalid phone GPS:",
-                    gps
-                );
-
                 return;
-
             }
 
 
-            // Save phone GPS
+            // ==================================================
+            // SAVE RECEIVED PHONE GPS
+            // ==================================================
             latestGPS = {
 
-                latitude: lat,
+                latitude:
+                    lat,
 
-                longitude: lon,
+                longitude:
+                    lon,
 
-                accuracy: acc,
+                accuracy:
+                    Number.isFinite(acc)
+                        ? acc
+                        : 0,
 
                 timestamp:
-                    gps.timestamp ??
+                    data.timestamp ??
                     Date.now()
-
             };
 
 
-            // Update coordinates displayed on laptop
+            // ==================================================
+            // UPDATE LAPTOP UI
+            // ==================================================
             if (latitude) {
 
                 latitude.textContent =
                     lat.toFixed(6);
-
             }
 
 
@@ -970,76 +1123,80 @@ if (locationRef) {
 
                 longitude.textContent =
                     lon.toFixed(6);
-
             }
 
 
             if (accuracy) {
 
                 accuracy.textContent =
-                    acc.toFixed(1);
-
+                    Number.isFinite(acc)
+                        ? acc.toFixed(1)
+                        : "--";
             }
 
 
-            // Update map marker
+            if (gpsStatus) {
+
+                gpsStatus.textContent =
+                    "● PHONE GPS RECEIVED";
+
+                gpsStatus.style.background =
+                    "rgba(16, 185, 129, 0.15)";
+
+                gpsStatus.style.color =
+                    "#10b981";
+
+                gpsStatus.style.borderColor =
+                    "rgba(16, 185, 129, 0.3)";
+            }
+
+
+            // ==================================================
+            // UPDATE LAPTOP MAP
+            // ==================================================
             updateRoverMarker(
                 lat,
                 lon
             );
 
 
-            console.log(
-                "PHONE GPS RECEIVED:",
+            // ==================================================
+            // WEATHER USING PHONE LOCATION
+            // ==================================================
+            await updateWeatherFromPhoneGPS(
                 lat,
-                lon,
-                "Accuracy:",
-                acc
+                lon
             );
 
 
-            // Laptop status
-            if (!isPhoneDevice()) {
+            // ==================================================
+            // CREATE MAPPING POINT
+            // ==================================================
+            createMappingPoint();
 
-                if (gpsStatus) {
 
-                    gpsStatus.textContent =
-                        "● PHONE GPS RECEIVED";
-
-                    gpsStatus.style.background =
-                        "rgba(16, 185, 129, 0.15)";
-
-                    gpsStatus.style.color =
-                        "#10b981";
-
-                    gpsStatus.style.borderColor =
-                        "rgba(16, 185, 129, 0.3)";
-
-                }
-
-            }
-
+            console.log(
+                "Phone GPS received from Firebase:",
+                lat,
+                lon
+            );
         },
 
 
-        (error) => {
+        (err) => {
 
             console.warn(
-                "Firebase GPS listener error:",
-                error
+                "Firebase location listener warning:",
+                err
             );
-
         }
-
     );
-
 }
 
 
 // ============================================================
 // FIREBASE SENSOR LISTENER
 // ============================================================
-
 if (sensorRef) {
 
     onValue(
@@ -1051,17 +1208,13 @@ if (sensorRef) {
             const data =
                 snapshot.val();
 
-
             if (data) {
 
                 handleSensorData(
                     data
                 );
-
             }
-
         },
-
 
         (err) => {
 
@@ -1069,18 +1222,14 @@ if (sensorRef) {
                 "Firebase sensor listener warning:",
                 err
             );
-
         }
-
     );
-
 }
 
 
 // ============================================================
-// LOAD EXISTING MAPPING DATA
+// FIREBASE MAPPING LISTENER
 // ============================================================
-
 if (mappingRef) {
 
     onValue(
@@ -1097,7 +1246,6 @@ if (mappingRef) {
 
 
             Object.values(data).forEach(
-
                 point => {
 
                     if (
@@ -1108,45 +1256,30 @@ if (mappingRef) {
 
                         addCO2Point(
 
-                            Number(
-                                point.latitude
-                            ),
+                            Number(point.latitude),
 
-                            Number(
-                                point.longitude
-                            ),
+                            Number(point.longitude),
 
-                            Number(
-                                point.co2
-                            ),
+                            Number(point.co2),
 
                             point.timestamp ??
                             Date.now()
-
                         );
-
                     }
-
                 }
-
             );
-
         },
-
 
         {
             onlyOnce: true
         }
-
     );
-
 }
 
 
 // ============================================================
-// BACKEND SSE STREAM
+// BACKEND SSE STREAM LISTENER
 // ============================================================
-
 function initBackendStream() {
 
     try {
@@ -1157,8 +1290,10 @@ function initBackendStream() {
             );
 
 
+        // ======================================================
+        // SENSOR UPDATE
+        // ======================================================
         eventSource.addEventListener(
-
             "sensor_update",
 
             (event) => {
@@ -1174,24 +1309,21 @@ function initBackendStream() {
                         data
                     );
 
-                }
-
-                catch (e) {
+                } catch (e) {
 
                     console.error(
-                        "SSE parse error:",
+                        "SSE parse error",
                         e
                     );
-
                 }
-
             }
-
         );
 
 
+        // ======================================================
+        // INITIAL STATE
+        // ======================================================
         eventSource.addEventListener(
-
             "initial_state",
 
             (event) => {
@@ -1207,49 +1339,42 @@ function initBackendStream() {
                         data
                     );
 
-                }
-
-                catch (e) {
+                } catch (e) {
 
                     console.warn(
                         "SSE initial state error:",
                         e
                     );
-
                 }
-
             }
-
         );
 
 
+        // ======================================================
+        // SSE ERROR
+        // ======================================================
         eventSource.onerror = () => {
 
+            // Backend offline or
+            // static hosting mode.
             eventSource.close();
-
         };
 
+
+    } catch (e) {
+
+        // SSE not supported
+        // or server not available.
     }
-
-    catch (e) {
-
-        console.warn(
-            "Backend stream unavailable."
-        );
-
-    }
-
 }
 
 
 // ============================================================
 // RECENTER BUTTON
 // ============================================================
-
 if (btnRecenter) {
 
     btnRecenter.addEventListener(
-
         "click",
 
         () => {
@@ -1260,6 +1385,7 @@ if (btnRecenter) {
 
                     [
                         latestGPS.latitude,
+
                         latestGPS.longitude
                     ],
 
@@ -1268,17 +1394,15 @@ if (btnRecenter) {
                     {
                         animate: true
                     }
-
                 );
 
-            }
-
-            else {
+            } else {
 
                 map.setView(
 
                     [
                         INITIAL_LATITUDE,
+
                         INITIAL_LONGITUDE
                     ],
 
@@ -1287,22 +1411,16 @@ if (btnRecenter) {
                     {
                         animate: true
                     }
-
                 );
-
             }
-
         }
-
     );
-
 }
 
 
 // ============================================================
 // GPS BUTTON
 // ============================================================
-
 if (btnToggleGps) {
 
     btnToggleGps.addEventListener(
@@ -1311,134 +1429,97 @@ if (btnToggleGps) {
 
         () => {
 
-            if (isPhoneDevice()) {
-
-                startGPS();
-
-            }
-
-            else {
-
-                console.log(
-                    "Laptop mode: receiving phone GPS from Firebase."
-                );
-
-            }
-
+            startGPS();
         }
-
     );
-
 }
 
 
 // ============================================================
-// LOCAL SIMULATION
+// LOCAL SIMULATION FALLBACK
 // ============================================================
-
+//
+// Used only when testing the website manually.
+//
+// CO₂ = simulated 425–445 PPM
+// Temperature/Humidity = NOT random anymore.
+//
+// Weather will come from phone GPS when available.
+// ============================================================
 window.pushLocalSimulation =
     function () {
 
         const mockCO2 =
             Math.floor(
-                400 +
-                Math.random() * 1100
-            );
-
-
-        const mockTemp =
-            Number(
-                (
-                    25 +
-                    Math.random() * 6
-                ).toFixed(1)
-            );
-
-
-        const mockHum =
-            Number(
-                (
-                    55 +
-                    Math.random() * 25
-                ).toFixed(1)
+                425 +
+                Math.random() * 21
             );
 
 
         handleSensorData({
 
-            co2: mockCO2,
-
-            temperature:
-                mockTemp,
-
-            humidity:
-                mockHum,
+            co2:
+                mockCO2,
 
             device:
                 "Local Simulator",
 
             lastUpdate:
                 Date.now()
-
         });
-
     };
 
 
 // ============================================================
 // START APPLICATION
 // ============================================================
-
-console.log(
-    "EcoBot website started."
-);
-
-
+//
+// On PHONE:
+//     Start GPS
+//
+// On LAPTOP:
+//     Do NOT request GPS.
+//     Wait for Firebase phone location.
 // ============================================================
-// PHONE / LAPTOP MODE
-// ============================================================
-
-if (isPhoneDevice()) {
-
-    // ================================================
-    // PHONE
-    // ================================================
-
-    console.log(
-        "Device detected: PHONE"
-    );
-
-    console.log(
-        "Starting PHONE GPS..."
-    );
-
-    startGPS();
-
-}
-
-else {
-
-    // ================================================
-    // LAPTOP
-    // ================================================
-
-    console.log(
-        "Device detected: LAPTOP / DESKTOP"
-    );
-
-    console.log(
-        "Laptop GPS is DISABLED."
-    );
-
-    console.log(
-        "Waiting for PHONE GPS from Firebase..."
-    );
-
-}
+startGPS();
 
 
-// ============================================================
-// START BACKEND STREAM
-// ============================================================
-
+// Start backend SSE if available.
 initBackendStream();
+
+
+// ============================================================
+// WEATHER AUTO-REFRESH
+// ============================================================
+//
+// If phone stays in the same place,
+// refresh weather every 5 minutes.
+// ============================================================
+setInterval(
+    () => {
+
+        if (
+            latestGPS &&
+            Number.isFinite(
+                latestGPS.latitude
+            ) &&
+            Number.isFinite(
+                latestGPS.longitude
+            )
+        ) {
+
+            // Allow a new request.
+            lastWeatherUpdate = 0;
+
+            updateWeatherFromPhoneGPS(
+
+                latestGPS.latitude,
+
+                latestGPS.longitude
+            );
+        }
+
+    },
+
+    5 * 60 * 1000
+);
