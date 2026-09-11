@@ -36,44 +36,83 @@ let locationRef = null;
 let mappingRef = null;
 
 try {
+
     app = initializeApp(firebaseConfig);
 
     database = getDatabase(app);
 
-    sensorRef = ref(database, "ecobot/sensor");
-    locationRef = ref(database, "ecobot/location");
-    mappingRef = ref(database, "ecobot/mapping");
+    sensorRef = ref(
+        database,
+        "ecobot/sensor"
+    );
 
-    console.log("Firebase initialized successfully");
+    locationRef = ref(
+        database,
+        "ecobot/location"
+    );
+
+    mappingRef = ref(
+        database,
+        "ecobot/mapping"
+    );
+
+    console.log(
+        "Firebase initialized successfully"
+    );
 
 } catch (e) {
-    console.error("Firebase init failed:", e);
+
+    console.error(
+        "Firebase init failed:",
+        e
+    );
 }
 
 
 // ============================================================
 // HTML ELEMENTS
 // ============================================================
-const connection = document.getElementById("connection");
+const connection =
+    document.getElementById("connection");
 
-const co2 = document.getElementById("co2");
-const co2Bar = document.getElementById("co2Bar");
-const co2Status = document.getElementById("co2Status");
+const co2 =
+    document.getElementById("co2");
 
-const temperature = document.getElementById("temperature");
-const humidity = document.getElementById("humidity");
+const co2Bar =
+    document.getElementById("co2Bar");
 
-const latitude = document.getElementById("latitude");
-const longitude = document.getElementById("longitude");
-const accuracy = document.getElementById("accuracy");
+const co2Status =
+    document.getElementById("co2Status");
 
-const device = document.getElementById("device");
-const lastUpdate = document.getElementById("lastUpdate");
+const temperature =
+    document.getElementById("temperature");
 
-const gpsStatus = document.getElementById("gpsStatus");
+const humidity =
+    document.getElementById("humidity");
 
-const btnRecenter = document.getElementById("btnRecenter");
-const btnToggleGps = document.getElementById("btnToggleGps");
+const latitude =
+    document.getElementById("latitude");
+
+const longitude =
+    document.getElementById("longitude");
+
+const accuracy =
+    document.getElementById("accuracy");
+
+const device =
+    document.getElementById("device");
+
+const lastUpdate =
+    document.getElementById("lastUpdate");
+
+const gpsStatus =
+    document.getElementById("gpsStatus");
+
+const btnRecenter =
+    document.getElementById("btnRecenter");
+
+const btnToggleGps =
+    document.getElementById("btnToggleGps");
 
 
 // ============================================================
@@ -82,6 +121,7 @@ const btnToggleGps = document.getElementById("btnToggleGps");
 let latestCO2 = null;
 
 let latestTemperature = null;
+
 let latestHumidity = null;
 
 let latestGPS = null;
@@ -91,17 +131,19 @@ let roverMarker = null;
 let previousGPS = null;
 
 let routePoints = [];
+
 let routeLine = null;
 
 let watchId = null;
 
 
 // ============================================================
-// WEATHER API STATE
+// WEATHER STATE
 // ============================================================
 let weatherRequestInProgress = false;
 
 let lastWeatherLat = null;
+
 let lastWeatherLon = null;
 
 let lastWeatherUpdate = 0;
@@ -109,32 +151,39 @@ let lastWeatherUpdate = 0;
 
 // ============================================================
 // INITIAL MAP COORDINATES
-// Kerala area
 // ============================================================
 const INITIAL_LATITUDE = 9.6850;
+
 const INITIAL_LONGITUDE = 76.7740;
 
 
 // ============================================================
 // CREATE LEAFLET MAP
 // ============================================================
-const map = L.map("map", {
-    zoomControl: true,
-    scrollWheelZoom: true
-}).setView(
-    [INITIAL_LATITUDE, INITIAL_LONGITUDE],
+const map = L.map(
+    "map",
+    {
+        zoomControl: true,
+        scrollWheelZoom: true
+    }
+).setView(
+    [
+        INITIAL_LATITUDE,
+        INITIAL_LONGITUDE
+    ],
     16
 );
 
 
 // ============================================================
-// OPENSTREETMAP TILES
+// OPEN STREET MAP
 // ============================================================
 L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
         maxZoom: 20,
-        attribution: "&copy; OpenStreetMap contributors"
+        attribution:
+            "&copy; OpenStreetMap contributors"
     }
 ).addTo(map);
 
@@ -144,16 +193,23 @@ L.tileLayer(
 // ============================================================
 const roverIcon = L.divIcon({
 
-    className: "custom-rover-pin",
+    className:
+        "custom-rover-pin",
 
     html: `
         <div style="
             width: 32px;
             height: 32px;
-            background: linear-gradient(135deg, #06b6d4, #0284c7);
+            background: linear-gradient(
+                135deg,
+                #06b6d4,
+                #0284c7
+            );
             border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 16px rgba(6, 182, 212, 0.8);
+            box-shadow:
+                0 0 16px
+                rgba(6, 182, 212, 0.8);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -162,9 +218,15 @@ const roverIcon = L.divIcon({
         ">🤖</div>
     `,
 
-    iconSize: [32, 32],
+    iconSize: [
+        32,
+        32
+    ],
 
-    iconAnchor: [16, 16]
+    iconAnchor: [
+        16,
+        16
+    ]
 });
 
 
@@ -174,10 +236,12 @@ const roverIcon = L.divIcon({
 function getCO2Color(value) {
 
     if (value < 800) {
+
         return "#10b981";
     }
 
     if (value < 1200) {
+
         return "#f59e0b";
     }
 
@@ -192,11 +256,14 @@ function updateCO2Status(value) {
 
     if (!co2Status) return;
 
+
     if (value < 800) {
 
-        co2Status.textContent = "OPTIMAL";
+        co2Status.textContent =
+            "OPTIMAL";
 
-        co2Status.style.color = "#10b981";
+        co2Status.style.color =
+            "#10b981";
 
         co2Status.style.background =
             "rgba(16, 185, 129, 0.15)";
@@ -204,11 +271,15 @@ function updateCO2Status(value) {
         co2Status.style.borderColor =
             "#10b981";
 
-    } else if (value < 1200) {
+    }
 
-        co2Status.textContent = "MODERATE";
+    else if (value < 1200) {
 
-        co2Status.style.color = "#f59e0b";
+        co2Status.textContent =
+            "MODERATE";
+
+        co2Status.style.color =
+            "#f59e0b";
 
         co2Status.style.background =
             "rgba(245, 158, 11, 0.15)";
@@ -216,11 +287,15 @@ function updateCO2Status(value) {
         co2Status.style.borderColor =
             "#f59e0b";
 
-    } else {
+    }
 
-        co2Status.textContent = "HIGH CO₂";
+    else {
 
-        co2Status.style.color = "#ef4444";
+        co2Status.textContent =
+            "HIGH CO₂";
+
+        co2Status.style.color =
+            "#ef4444";
 
         co2Status.style.background =
             "rgba(239, 68, 68, 0.15)";
@@ -238,15 +313,24 @@ function updateCO2Bar(value) {
 
     if (!co2Bar) return;
 
-    let percentage = (value / 2000) * 100;
 
-    percentage = Math.max(
-        0,
-        Math.min(100, percentage)
-    );
+    let percentage =
+        (value / 2000) * 100;
+
+
+    percentage =
+        Math.max(
+            0,
+            Math.min(
+                100,
+                percentage
+            )
+        );
+
 
     co2Bar.style.width =
         percentage + "%";
+
 
     co2Bar.style.background =
         getCO2Color(value);
@@ -256,31 +340,47 @@ function updateCO2Bar(value) {
 // ============================================================
 // UPDATE ROVER MARKER
 // ============================================================
-function updateRoverMarker(lat, lon) {
+function updateRoverMarker(
+    lat,
+    lon
+) {
 
     if (roverMarker === null) {
 
         roverMarker =
             L.marker(
-                [lat, lon],
+                [
+                    lat,
+                    lon
+                ],
                 {
                     icon: roverIcon
                 }
             ).addTo(map);
 
+
         roverMarker.bindPopup(
             "<strong>🤖 EcoBot Rover</strong><br>Live Position"
         );
 
+
         map.setView(
-            [lat, lon],
+            [
+                lat,
+                lon
+            ],
             17
         );
 
-    } else {
+    }
+
+    else {
 
         roverMarker.setLatLng(
-            [lat, lon]
+            [
+                lat,
+                lon
+            ]
         );
     }
 }
@@ -299,9 +399,13 @@ function addCO2Point(
     const color =
         getCO2Color(value);
 
+
     const point =
         L.circleMarker(
-            [lat, lon],
+            [
+                lat,
+                lon
+            ],
             {
                 radius: 8,
 
@@ -315,7 +419,9 @@ function addCO2Point(
             }
         );
 
+
     point.bindPopup(`
+
         <div style="
             font-family: inherit;
             font-size: 13px;
@@ -340,10 +446,14 @@ function addCO2Point(
             <br>
 
             <strong>Time:</strong>
-            ${new Date(timestamp).toLocaleTimeString()}
+            ${new Date(
+                timestamp
+            ).toLocaleTimeString()}
 
         </div>
+
     `);
+
 
     point.addTo(map);
 }
@@ -352,11 +462,18 @@ function addCO2Point(
 // ============================================================
 // UPDATE ROUTE
 // ============================================================
-function updateRoute(lat, lon) {
+function updateRoute(
+    lat,
+    lon
+) {
 
     routePoints.push(
-        [lat, lon]
+        [
+            lat,
+            lon
+        ]
     );
+
 
     if (routeLine !== null) {
 
@@ -364,6 +481,7 @@ function updateRoute(lat, lon) {
             routeLine
         );
     }
+
 
     routeLine =
         L.polyline(
@@ -382,91 +500,132 @@ function updateRoute(lat, lon) {
 
 
 // ============================================================
-// WEATHER FROM PHONE GPS
+// LIVE WEATHER FROM PHONE GPS
 // ============================================================
 //
-// Gets current temperature and relative humidity
-// for the PHONE'S GPS coordinates.
+// Temperature and humidity are obtained from Open-Meteo
+// using the PHONE'S GPS coordinates.
 //
-// Open-Meteo:
-// https://api.open-meteo.com/v1/forecast
+// No random temperature.
+// No random humidity.
+// No Firebase temperature/humidity.
 //
-// Updates:
-// - Every 5 minutes
-// - OR when phone moves ~100 m or more
+// Example:
+// Phone GPS:
+// 10.052013
+// 76.619632
+//
+// The request will use exactly those coordinates.
+//
 // ============================================================
 async function updateWeatherFromPhoneGPS(
     lat,
     lon
 ) {
 
+    // --------------------------------------------------------
+    // Validate coordinates
+    // --------------------------------------------------------
     if (
         !Number.isFinite(lat) ||
         !Number.isFinite(lon)
     ) {
-        return;
-    }
 
-
-    const now = Date.now();
-
-
-    // Don't request weather more than once
-    // every 5 minutes.
-    if (
-        now - lastWeatherUpdate <
-        5 * 60 * 1000
-    ) {
-        return;
-    }
-
-
-    // If GPS has barely moved,
-    // don't request again.
-    if (
-        lastWeatherLat !== null &&
-        lastWeatherLon !== null &&
-        Math.abs(lat - lastWeatherLat) < 0.001 &&
-        Math.abs(lon - lastWeatherLon) < 0.001
-    ) {
-        return;
-    }
-
-
-    // Prevent multiple simultaneous requests.
-    if (weatherRequestInProgress) {
-        return;
-    }
-
-
-    weatherRequestInProgress = true;
-
-
-    try {
-
-        const url =
-            "https://api.open-meteo.com/v1/forecast" +
-
-            "?latitude=" +
-            encodeURIComponent(lat) +
-
-            "&longitude=" +
-            encodeURIComponent(lon) +
-
-            "&current=temperature_2m,relative_humidity_2m" +
-
-            "&temperature_unit=celsius" +
-
-            "&timezone=auto";
-
-
-        console.log(
-            "Requesting weather for:",
+        console.warn(
+            "Invalid GPS coordinates for weather:",
             lat,
             lon
         );
 
+        return;
+    }
 
+
+    // --------------------------------------------------------
+    // Prevent multiple requests
+    // --------------------------------------------------------
+    if (
+        weatherRequestInProgress
+    ) {
+
+        console.log(
+            "Weather request already running."
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Refresh every 2 minutes
+    // --------------------------------------------------------
+    const now =
+        Date.now();
+
+
+    if (
+        now - lastWeatherUpdate <
+        2 * 60 * 1000
+    ) {
+
+        return;
+    }
+
+
+    weatherRequestInProgress =
+        true;
+
+
+    try {
+
+        // ====================================================
+        // BUILD WEATHER API REQUEST
+        // ====================================================
+        const url =
+            `https://api.open-meteo.com/v1/forecast` +
+
+            `?latitude=${encodeURIComponent(lat)}` +
+
+            `&longitude=${encodeURIComponent(lon)}` +
+
+            `&current=temperature_2m,relative_humidity_2m` +
+
+            `&temperature_unit=celsius` +
+
+            `&timezone=auto`;
+
+
+        console.log(
+            "================================="
+        );
+
+        console.log(
+            "🌦️ WEATHER REQUEST"
+        );
+
+        console.log(
+            "Latitude:",
+            lat
+        );
+
+        console.log(
+            "Longitude:",
+            lon
+        );
+
+        console.log(
+            "URL:",
+            url
+        );
+
+        console.log(
+            "================================="
+        );
+
+
+        // ====================================================
+        // REQUEST WEATHER
+        // ====================================================
         const response =
             await fetch(url);
 
@@ -479,38 +638,66 @@ async function updateWeatherFromPhoneGPS(
         }
 
 
+        // ====================================================
+        // READ RESPONSE
+        // ====================================================
         const weather =
             await response.json();
 
 
+        console.log(
+            "Complete weather response:",
+            weather
+        );
+
+
+        // ====================================================
+        // GET TEMPERATURE
+        // ====================================================
         const temperatureValue =
-            weather.current?.temperature_2m;
+            weather.current
+                ?.temperature_2m;
 
 
+        // ====================================================
+        // GET HUMIDITY
+        // ====================================================
         const humidityValue =
-            weather.current?.relative_humidity_2m;
+            weather.current
+                ?.relative_humidity_2m;
 
 
+        // ====================================================
+        // VALIDATE WEATHER
+        // ====================================================
         if (
-            typeof temperatureValue !== "number" ||
-            typeof humidityValue !== "number"
+            typeof temperatureValue !==
+            "number" ||
+
+            typeof humidityValue !==
+            "number"
         ) {
 
             throw new Error(
-                "Invalid weather data received"
+                "Temperature/humidity missing from weather response"
             );
         }
 
 
-        // Save latest weather values.
+        // ====================================================
+        // SAVE WEATHER VALUES
+        // ====================================================
         latestTemperature =
             temperatureValue;
+
 
         latestHumidity =
             humidityValue;
 
 
-        // Update dashboard.
+        // ====================================================
+        // UPDATE TEMPERATURE ON WEBSITE
+        // ====================================================
         if (temperature) {
 
             temperature.textContent =
@@ -518,6 +705,9 @@ async function updateWeatherFromPhoneGPS(
         }
 
 
+        // ====================================================
+        // UPDATE HUMIDITY ON WEBSITE
+        // ====================================================
         if (humidity) {
 
             humidity.textContent =
@@ -525,18 +715,44 @@ async function updateWeatherFromPhoneGPS(
         }
 
 
+        // ====================================================
+        // LOG VALUES
+        // ====================================================
         console.log(
-            "Live weather:",
+            "🌡️ Temperature:",
             temperatureValue,
-            "°C",
+            "°C"
+        );
+
+
+        console.log(
+            "💧 Humidity:",
             humidityValue,
             "%"
         );
 
 
-        // Remember last successful request.
-        lastWeatherLat = lat;
-        lastWeatherLon = lon;
+        console.log(
+            "🕒 Weather time:",
+            weather.current?.time
+        );
+
+
+        console.log(
+            "📍 Weather coordinates:",
+            weather.latitude,
+            weather.longitude
+        );
+
+
+        // ====================================================
+        // REMEMBER LAST SUCCESSFUL REQUEST
+        // ====================================================
+        lastWeatherLat =
+            lat;
+
+        lastWeatherLon =
+            lon;
 
         lastWeatherUpdate =
             Date.now();
@@ -545,7 +761,7 @@ async function updateWeatherFromPhoneGPS(
     } catch (error) {
 
         console.error(
-            "Weather API error:",
+            "❌ Weather API failed:",
             error
         );
 
@@ -562,17 +778,23 @@ async function updateWeatherFromPhoneGPS(
 // ============================================================
 //
 // IMPORTANT:
-// Temperature and humidity are NOT taken from
-// Firebase sensor data anymore.
 //
-// They come from Open-Meteo using phone GPS.
+// Temperature and humidity are NOT read from the sensor
+// Firebase data anymore.
+//
+// They are obtained from Open-Meteo using phone GPS.
+//
 // ============================================================
-function handleSensorData(data) {
+function handleSensorData(
+    data
+) {
 
     if (!data) return;
 
 
-    // Connection status
+    // ========================================================
+    // CONNECTION STATUS
+    // ========================================================
     if (connection) {
 
         connection.textContent =
@@ -587,9 +809,10 @@ function handleSensorData(data) {
     // CO₂ SIMULATION
     // ========================================================
     //
-    // Your MQ-2 is not a true CO₂ sensor.
-    // Therefore we keep the dashboard value
-    // between 425 and 445 PPM for demonstration.
+    // MQ-2 is not a true CO₂ sensor.
+    //
+    // Therefore the dashboard keeps a demonstration value
+    // between 425 and 445 PPM.
     //
     latestCO2 =
         Math.floor(
@@ -609,25 +832,20 @@ function handleSensorData(data) {
         latestCO2
     );
 
+
     updateCO2Bar(
         latestCO2
     );
 
 
     // ========================================================
-    // TEMPERATURE & HUMIDITY
+    // TEMPERATURE
     // ========================================================
     //
-    // DO NOT use:
+    // DO NOT use data.temperature here.
     //
-    // latestTemperature = data.temperature
-    // latestHumidity = data.humidity
-    //
-    // because these may be random simulator values.
-    //
-    // Open-Meteo supplies these values instead.
+    // Weather API controls this value.
     // ========================================================
-
     if (temperature) {
 
         temperature.textContent =
@@ -637,6 +855,14 @@ function handleSensorData(data) {
     }
 
 
+    // ========================================================
+    // HUMIDITY
+    // ========================================================
+    //
+    // DO NOT use data.humidity here.
+    //
+    // Weather API controls this value.
+    // ========================================================
     if (humidity) {
 
         humidity.textContent =
@@ -666,15 +892,20 @@ function handleSensorData(data) {
 
         const timeVal =
             data.lastUpdate
-                ? new Date(data.lastUpdate)
+                ? new Date(
+                    data.lastUpdate
+                )
                 : new Date();
+
 
         lastUpdate.textContent =
             timeVal.toLocaleTimeString();
     }
 
 
-    // Create mapping point.
+    // ========================================================
+    // CREATE MAPPING POINT
+    // ========================================================
     createMappingPoint();
 }
 
@@ -684,20 +915,27 @@ function handleSensorData(data) {
 // ============================================================
 async function createMappingPoint() {
 
+    // Need GPS and CO₂
     if (
         latestGPS === null ||
         latestCO2 === null
     ) {
+
         return;
     }
 
 
-    // Don't create duplicate points
-    // if GPS hasn't moved.
+    // ========================================================
+    // PREVENT DUPLICATE GPS POINTS
+    // ========================================================
     if (
         previousGPS &&
-        previousGPS.lat === latestGPS.latitude &&
-        previousGPS.lon === latestGPS.longitude
+
+        previousGPS.lat ===
+            latestGPS.latitude &&
+
+        previousGPS.lon ===
+            latestGPS.longitude
     ) {
 
         return;
@@ -714,6 +952,9 @@ async function createMappingPoint() {
     };
 
 
+    // ========================================================
+    // CREATE MAPPING DATA
+    // ========================================================
     const mappingPoint = {
 
         co2:
@@ -740,7 +981,7 @@ async function createMappingPoint() {
 
 
     // ========================================================
-    // ADD POINT DIRECTLY TO MAP
+    // ADD POINT TO MAP
     // ========================================================
     addCO2Point(
 
@@ -762,12 +1003,16 @@ async function createMappingPoint() {
         try {
 
             const newPoint =
-                push(mappingRef);
+                push(
+                    mappingRef
+                );
+
 
             await set(
                 newPoint,
                 mappingPoint
             );
+
 
             console.log(
                 "Mapping point saved to Firebase:",
@@ -786,7 +1031,7 @@ async function createMappingPoint() {
 
 
 // ============================================================
-// CHECK WHETHER DEVICE IS A PHONE
+// CHECK WHETHER DEVICE IS PHONE
 // ============================================================
 function isPhoneDevice() {
 
@@ -802,10 +1047,14 @@ function isPhoneDevice() {
 // ============================================================
 function startGPS() {
 
-    // IMPORTANT:
-    // Only the phone should request GPS.
+    // ========================================================
+    // LAPTOP
+    // ========================================================
     //
-    // Laptop receives phone GPS through Firebase.
+    // Laptop DOES NOT request GPS.
+    //
+    // It waits for phone GPS through Firebase.
+    // ========================================================
     if (!isPhoneDevice()) {
 
         if (gpsStatus) {
@@ -823,9 +1072,16 @@ function startGPS() {
                 "rgba(245, 158, 11, 0.3)";
         }
 
+
         console.log(
-            "Laptop detected. Waiting for phone GPS through Firebase."
+            "Laptop detected."
         );
+
+
+        console.log(
+            "Waiting for phone GPS through Firebase."
+        );
+
 
         return;
     }
@@ -845,10 +1101,14 @@ function startGPS() {
                 "#ef4444";
         }
 
+
         return;
     }
 
 
+    // ========================================================
+    // GPS REQUESTING
+    // ========================================================
     if (gpsStatus) {
 
         gpsStatus.textContent =
@@ -856,7 +1116,9 @@ function startGPS() {
     }
 
 
-    // Clear previous GPS watcher.
+    // ========================================================
+    // CLEAR OLD WATCHER
+    // ========================================================
     if (watchId !== null) {
 
         navigator.geolocation.clearWatch(
@@ -866,13 +1128,16 @@ function startGPS() {
 
 
     // ========================================================
-    // START WATCHING PHONE GPS
+    // START PHONE GPS
     // ========================================================
     watchId =
         navigator.geolocation.watchPosition(
 
             async (position) => {
 
+                // ==================================================
+                // READ PHONE GPS
+                // ==================================================
                 const lat =
                     position.coords.latitude;
 
@@ -883,8 +1148,17 @@ function startGPS() {
                     position.coords.accuracy;
 
 
+                console.log(
+                    "📱 Phone GPS:",
+                    lat,
+                    lon,
+                    "accuracy:",
+                    acc
+                );
+
+
                 // ==================================================
-                // UPDATE PHONE SCREEN
+                // UPDATE LATITUDE
                 // ==================================================
                 if (latitude) {
 
@@ -893,6 +1167,9 @@ function startGPS() {
                 }
 
 
+                // ==================================================
+                // UPDATE LONGITUDE
+                // ==================================================
                 if (longitude) {
 
                     longitude.textContent =
@@ -900,6 +1177,9 @@ function startGPS() {
                 }
 
 
+                // ==================================================
+                // UPDATE ACCURACY
+                // ==================================================
                 if (accuracy) {
 
                     accuracy.textContent =
@@ -927,12 +1207,13 @@ function startGPS() {
 
 
                 // ==================================================
-                // UPDATE LOCAL MAP
+                // UPDATE PHONE MAP
                 // ==================================================
                 updateRoverMarker(
                     lat,
                     lon
                 );
+
 
                 updateRoute(
                     lat,
@@ -971,8 +1252,9 @@ function startGPS() {
                             latestGPS
                         );
 
+
                         console.log(
-                            "Phone GPS sent to Firebase:",
+                            "📡 Phone GPS sent to Firebase:",
                             latestGPS
                         );
 
@@ -987,7 +1269,7 @@ function startGPS() {
 
 
                 // ==================================================
-                // GET WEATHER USING PHONE GPS
+                // GET WEATHER FROM PHONE LOCATION
                 // ==================================================
                 await updateWeatherFromPhoneGPS(
                     lat,
@@ -996,7 +1278,7 @@ function startGPS() {
 
 
                 // ==================================================
-                // CREATE MAPPING POINT
+                // CREATE MAP POINT
                 // ==================================================
                 createMappingPoint();
             },
@@ -1045,10 +1327,14 @@ function startGPS() {
 // FIREBASE PHONE LOCATION LISTENER
 // ============================================================
 //
-// This runs on the LAPTOP.
+// THIS PART RUNS ON THE LAPTOP.
 //
-// It receives GPS that the PHONE has already sent
-// to Firebase.
+// Phone:
+// GPS → Firebase
+//
+// Laptop:
+// Firebase → GPS + Weather → Website
+//
 // ============================================================
 if (locationRef) {
 
@@ -1068,27 +1354,43 @@ if (locationRef) {
             }
 
 
+            // ==================================================
+            // READ FIREBASE GPS
+            // ==================================================
             const lat =
-                Number(data.latitude);
+                Number(
+                    data.latitude
+                );
 
             const lon =
-                Number(data.longitude);
+                Number(
+                    data.longitude
+                );
 
             const acc =
-                Number(data.accuracy);
+                Number(
+                    data.accuracy
+                );
 
 
+            // ==================================================
+            // VALIDATE GPS
+            // ==================================================
             if (
                 !Number.isFinite(lat) ||
                 !Number.isFinite(lon)
             ) {
+
+                console.warn(
+                    "Invalid GPS received from Firebase."
+                );
 
                 return;
             }
 
 
             // ==================================================
-            // SAVE RECEIVED PHONE GPS
+            // SAVE PHONE GPS
             // ==================================================
             latestGPS = {
 
@@ -1110,7 +1412,7 @@ if (locationRef) {
 
 
             // ==================================================
-            // UPDATE LAPTOP UI
+            // UPDATE LATITUDE
             // ==================================================
             if (latitude) {
 
@@ -1119,6 +1421,9 @@ if (locationRef) {
             }
 
 
+            // ==================================================
+            // UPDATE LONGITUDE
+            // ==================================================
             if (longitude) {
 
                 longitude.textContent =
@@ -1126,6 +1431,9 @@ if (locationRef) {
             }
 
 
+            // ==================================================
+            // UPDATE ACCURACY
+            // ==================================================
             if (accuracy) {
 
                 accuracy.textContent =
@@ -1135,6 +1443,9 @@ if (locationRef) {
             }
 
 
+            // ==================================================
+            // UPDATE GPS STATUS
+            // ==================================================
             if (gpsStatus) {
 
                 gpsStatus.textContent =
@@ -1161,7 +1472,7 @@ if (locationRef) {
 
 
             // ==================================================
-            // WEATHER USING PHONE LOCATION
+            // GET WEATHER FOR EXACT PHONE LOCATION
             // ==================================================
             await updateWeatherFromPhoneGPS(
                 lat,
@@ -1176,7 +1487,7 @@ if (locationRef) {
 
 
             console.log(
-                "Phone GPS received from Firebase:",
+                "📡 Phone GPS received from Firebase:",
                 lat,
                 lon
             );
@@ -1208,6 +1519,7 @@ if (sensorRef) {
             const data =
                 snapshot.val();
 
+
             if (data) {
 
                 handleSensorData(
@@ -1215,6 +1527,7 @@ if (sensorRef) {
                 );
             }
         },
+
 
         (err) => {
 
@@ -1249,26 +1562,38 @@ if (mappingRef) {
                 point => {
 
                     if (
-                        point.latitude !== undefined &&
-                        point.longitude !== undefined &&
-                        point.co2 !== undefined
+                        point.latitude !==
+                            undefined &&
+
+                        point.longitude !==
+                            undefined &&
+
+                        point.co2 !==
+                            undefined
                     ) {
 
                         addCO2Point(
 
-                            Number(point.latitude),
+                            Number(
+                                point.latitude
+                            ),
 
-                            Number(point.longitude),
+                            Number(
+                                point.longitude
+                            ),
 
-                            Number(point.co2),
+                            Number(
+                                point.co2
+                            ),
 
                             point.timestamp ??
-                            Date.now()
+                                Date.now()
                         );
                     }
                 }
             );
         },
+
 
         {
             onlyOnce: true
@@ -1305,6 +1630,7 @@ function initBackendStream() {
                             event.data
                         );
 
+
                     handleSensorData(
                         data
                     );
@@ -1312,7 +1638,7 @@ function initBackendStream() {
                 } catch (e) {
 
                     console.error(
-                        "SSE parse error",
+                        "SSE parse error:",
                         e
                     );
                 }
@@ -1335,6 +1661,7 @@ function initBackendStream() {
                             event.data
                         );
 
+
                     handleSensorData(
                         data
                     );
@@ -1355,16 +1682,15 @@ function initBackendStream() {
         // ======================================================
         eventSource.onerror = () => {
 
-            // Backend offline or
-            // static hosting mode.
             eventSource.close();
         };
 
 
     } catch (e) {
 
-        // SSE not supported
-        // or server not available.
+        console.warn(
+            "Backend SSE unavailable."
+        );
     }
 }
 
@@ -1375,6 +1701,7 @@ function initBackendStream() {
 if (btnRecenter) {
 
     btnRecenter.addEventListener(
+
         "click",
 
         () => {
@@ -1439,12 +1766,11 @@ if (btnToggleGps) {
 // LOCAL SIMULATION FALLBACK
 // ============================================================
 //
-// Used only when testing the website manually.
+// CO₂ = simulated 425–445 PPM.
 //
-// CO₂ = simulated 425–445 PPM
-// Temperature/Humidity = NOT random anymore.
+// Temperature/humidity are NOT random.
 //
-// Weather will come from phone GPS when available.
+// They are controlled by Open-Meteo.
 // ============================================================
 window.pushLocalSimulation =
     function () {
@@ -1471,45 +1797,33 @@ window.pushLocalSimulation =
 
 
 // ============================================================
-// START APPLICATION
+// PERIODIC WEATHER REFRESH
 // ============================================================
 //
-// On PHONE:
-//     Start GPS
+// If the phone remains stationary,
+// refresh weather every 2 minutes.
 //
-// On LAPTOP:
-//     Do NOT request GPS.
-//     Wait for Firebase phone location.
-// ============================================================
-startGPS();
-
-
-// Start backend SSE if available.
-initBackendStream();
-
-
-// ============================================================
-// WEATHER AUTO-REFRESH
-// ============================================================
-//
-// If phone stays in the same place,
-// refresh weather every 5 minutes.
 // ============================================================
 setInterval(
+
     () => {
 
         if (
             latestGPS &&
+
             Number.isFinite(
                 latestGPS.latitude
             ) &&
+
             Number.isFinite(
                 latestGPS.longitude
             )
         ) {
 
-            // Allow a new request.
+            // Force the next request
+            // to be allowed.
             lastWeatherUpdate = 0;
+
 
             updateWeatherFromPhoneGPS(
 
@@ -1521,5 +1835,24 @@ setInterval(
 
     },
 
-    5 * 60 * 1000
+    2 * 60 * 1000
 );
+
+
+// ============================================================
+// START APPLICATION
+// ============================================================
+//
+// PHONE:
+//     GPS starts
+//
+// LAPTOP:
+//     GPS does NOT start
+//     Firebase phone GPS is used
+//
+// ============================================================
+startGPS();
+
+
+// Start backend stream.
+initBackendStream();
